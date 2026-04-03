@@ -3,7 +3,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  static bool _isGoogleInitialized = false;
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -13,7 +13,9 @@ class AuthService {
 
   // Sign in with Email and Password
   Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
       return await _auth.signInWithEmailAndPassword(
         email: email.trim(),
@@ -28,7 +30,9 @@ class AuthService {
 
   // Register with Email and Password
   Future<UserCredential> registerWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
       return await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
@@ -44,13 +48,13 @@ class AuthService {
   // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) {
-        // The user canceled the sign-in
-        return null;
+      if (!_isGoogleInitialized) {
+        await GoogleSignIn.instance.initialize();
+        _isGoogleInitialized = true;
       }
+
+      // Trigger the authentication flow
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
 
       // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
@@ -58,7 +62,6 @@ class AuthService {
 
       // Create a new credential
       final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
@@ -66,6 +69,11 @@ class AuthService {
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseError(e);
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return null; // The user canceled the sign-in
+      }
+      throw 'An error occurred during Google Sign-In. Please try again.';
     } catch (e) {
       throw 'An error occurred during Google Sign-In. Please try again.';
     }
@@ -74,7 +82,9 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut();
+      if (_isGoogleInitialized) {
+        await GoogleSignIn.instance.signOut();
+      }
       await _auth.signOut();
     } catch (e) {
       throw 'Failed to sign out. Please try again.';
