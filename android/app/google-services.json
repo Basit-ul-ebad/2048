@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "830983470624-kij43vkvtovgvh56a8cacksvr7ds1ugk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.basitulebad.twozerofoureight",
+            "certificate_hash": "8d0f1d0ad5c51dba521042dcf7ef5a7e210eaf41"
+          }
+        },
+        {
+          "client_id": "830983470624-obviavtinggie6hu42pegp4j0aq16u5c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.basitulebad.twozerofoureight",
+            "certificate_hash": "3f787fe01eb4416b410e99fb7550b767a8531c5a"
+          }
+        },
+        {
           "client_id": "830983470624-4pfa88co1817qfs6njqknv46efcl0tbr.apps.googleusercontent.com",
           "client_type": 3
         }
