@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../../../core/constants/colors.dart';
-import '../../../services/firebase/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,92 +13,98 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
+  final _nicknameController = TextEditingController();
 
   bool _isLoginMode = true;
-  bool _isLoading = false;
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _submitAuth() async {
-    final email = _emailController.text;
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      _showError('Please fill in both email and password.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      if (_isLoginMode) {
-        await _authService.signInWithEmailAndPassword(email, password);
-      } else {
-        await _authService.registerWithEmailAndPassword(email, password);
-      }
-      // Note: We don't need to manually navigate here because of the
-      // StreamBuilder in main.dart that will auto-route to ModeSelectionScreen.
-    } catch (e) {
-      _showError(e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-    try {
-      final credentials = await _authService.signInWithGoogle();
-      if (credentials == null) {
-        // User canceled sign in, just remove loading indicator
-        if (mounted) setState(() => _isLoading = false);
-        return;
-      }
-      // StreamBuilder handles navigation
-    } catch (e) {
-      _showError(e.toString());
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nicknameController.dispose();
     super.dispose();
+  }
+
+  void _submit() async {
+    final authProvider = context.read<AuthProvider>();
+    
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final nickname = _nicknameController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || (!_isLoginMode && nickname.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all required fields')),
+      );
+      return;
+    }
+
+    bool success;
+    if (_isLoginMode) {
+      success = await authProvider.login(email, password);
+    } else {
+      success = await authProvider.register(email, password, nickname);
+    }
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.error ?? 'Authentication failed')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  '2048 Game',
+                  '2048',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 48,
+                    fontSize: 64,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
                   ),
                 ),
+                const Text(
+                  'MULTIPLAYER',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                    letterSpacing: 4,
+                  ),
+                ),
                 const SizedBox(height: 48),
+                
+                if (!_isLoginMode) ...[
+                  TextField(
+                    controller: _nicknameController,
+                    decoration: InputDecoration(
+                      hintText: 'Choose a Nickname',
+                      filled: true,
+                      fillColor: AppColors.getTileColor(2),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.person),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -108,10 +115,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
+                    prefixIcon: const Icon(Icons.email),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 16),
+                
                 TextField(
                   controller: _passwordController,
                   decoration: InputDecoration(
@@ -122,19 +131,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
+                    prefixIcon: const Icon(Icons.lock),
                   ),
                   obscureText: true,
                 ),
                 const SizedBox(height: 32),
-                if (_isLoading)
-                  const Center(
-                    child: CircularProgressIndicator(color: AppColors.textDark),
-                  )
-                else ...[
+
+                if (isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else
                   ElevatedButton(
-                    onPressed: _submitAuth,
+                    onPressed: _submit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.getTileColor(64),
+                      backgroundColor: AppColors.getTileColor(2048),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -145,78 +154,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textLight,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _isLoginMode = !_isLoginMode;
-                      });
-                    },
-                    child: Text(
-                      _isLoginMode
-                          ? "Don't have an account? Sign Up"
-                          : "Already have an account? Sign In",
-                      style: const TextStyle(
-                        color: AppColors.textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
+                
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoginMode = !_isLoginMode;
+                    });
+                  },
+                  child: Text(
+                    _isLoginMode
+                        ? "Don't have an account? Sign Up"
+                        : "Already have an account? Sign In",
+                    style: const TextStyle(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: const [
-                      Expanded(child: Divider(color: Colors.black26)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'OR',
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.black26)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _signInWithGoogle,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: Colors.black12),
-                      ),
-                      elevation: 1,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        // Placeholder for proper Google Logo, using explicit styling
-                        Text(
-                          'G',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          'Sign in with Google',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),

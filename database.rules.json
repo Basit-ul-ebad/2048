@@ -1,0 +1,19 @@
+{
+  "rules": {
+    "matchmaking_queue": {
+      // Anyone authenticated can read the queue
+      ".read": "auth != null",
+      "$queueId": {
+        // Only allow creating a queue entry if the user ID matches the auth ID
+        ".write": "auth != null && (newData.child('userId').val() === auth.uid || data.child('userId').val() === auth.uid)"
+      }
+    },
+    "online_matches": {
+      "$matchId": {
+        // Only players in the match can read or write
+        ".read": "auth != null && (data.child('player1Id').val() === auth.uid || data.child('player2Id').val() === auth.uid || newData.child('player1Id').val() === auth.uid || newData.child('player2Id').val() === auth.uid)",
+        ".write": "auth != null && (data.val() === null || data.child('player1Id').val() === auth.uid || data.child('player2Id').val() === auth.uid)"
+      }
+    }
+  }
+}
