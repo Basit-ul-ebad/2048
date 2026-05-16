@@ -8,7 +8,6 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.getTileColor(2048),
-        background: AppColors.background,
         surface: Colors.white,
       ),
       useMaterial3: true,
@@ -38,7 +37,7 @@ class AppTheme {
           ),
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 4,
         shadowColor: Colors.black12,

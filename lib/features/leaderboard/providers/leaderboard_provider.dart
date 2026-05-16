@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/firebase/firestore_service.dart';
 
 class LeaderboardProvider extends ChangeNotifier {

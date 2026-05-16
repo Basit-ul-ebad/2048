@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
-import '../../../../core/constants/ranks.dart';
 import '../../providers/leaderboard_provider.dart';
 
 class LeaderboardScreen extends StatefulWidget {

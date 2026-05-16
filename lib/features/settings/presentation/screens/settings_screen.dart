@@ -27,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
             child: SwitchListTile(
               title: const Text('Sound Effects', style: TextStyle(fontWeight: FontWeight.bold)),
               secondary: const Icon(Icons.volume_up, color: AppColors.textDark),
-              activeColor: AppColors.getTileColor(2048),
+              activeThumbColor: AppColors.getTileColor(2048),
               value: settings.isSoundEnabled,
               onChanged: (value) {
                 settings.toggleSound();
@@ -40,7 +40,7 @@ class SettingsScreen extends StatelessWidget {
             child: SwitchListTile(
               title: const Text('Vibration (Haptics)', style: TextStyle(fontWeight: FontWeight.bold)),
               secondary: const Icon(Icons.vibration, color: AppColors.textDark),
-              activeColor: AppColors.getTileColor(2048),
+              activeThumbColor: AppColors.getTileColor(2048),
               value: settings.isVibrationEnabled,
               onChanged: (value) {
                 settings.toggleVibration();

@@ -139,6 +139,7 @@ class ModeSelectionScreen extends StatelessWidget {
                           ],
                         ),
                       ),
+                      ),
                       const SizedBox(height: 32),
                       
                       // Game Modes

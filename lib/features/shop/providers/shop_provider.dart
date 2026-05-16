@@ -5,7 +5,7 @@ import '../../../services/firebase/firestore_service.dart';
 class ShopProvider extends ChangeNotifier {
   final FirestoreService _firestoreService;
 
-  List<Map<String, dynamic>> _availableSkins = [
+  final List<Map<String, dynamic>> _availableSkins = [
     // Local fallback/defaults
     {'id': 'default', 'name': 'Classic', 'price': 0, 'colors': ['#EDC22E', '#CDC1B4']},
     {'id': 'neon', 'name': 'Neon Lights', 'price': 500, 'colors': ['#00FFCC', '#FF00FF']},

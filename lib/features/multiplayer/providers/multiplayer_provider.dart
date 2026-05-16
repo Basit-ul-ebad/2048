@@ -14,9 +14,15 @@ class MultiplayerProvider extends ChangeNotifier {
   String? _currentMatchId;
   String? _opponentId;
   
+  int _opponentScore = 0;
   List<int> _opponentBoard = List.filled(16, 0);
   String? _opponentEmote;
   int? _opponentEmoteTime;
+
+  StreamSubscription<DatabaseEvent>? _matchSubscription;
+  StreamSubscription<DatabaseEvent>? _queueSubscription;
+
+  MultiplayerProvider(this._matchmakingService, this._realtimeService);
 
   MatchState get state => _state;
   List<int> get opponentBoard => _opponentBoard;
