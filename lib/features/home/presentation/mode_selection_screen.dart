@@ -27,7 +27,7 @@ class ModeSelectionScreen extends StatelessWidget {
 
     // Listen to notifications if not already doing so
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (user != null && notificationProvider.notifications.isEmpty) {
+      if (user != null && !notificationProvider.isListening) {
         context.read<NotificationProvider>().listenToNotifications(user.uid);
       }
     });

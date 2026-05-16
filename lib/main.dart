@@ -111,6 +111,12 @@ class AuthWrapper extends StatelessWidget {
           return const ModeSelectionScreen();
         }
         
+        // Clean up when logged out
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<ProfileProvider>().clearProfile();
+          context.read<NotificationProvider>().stopListening();
+        });
+        
         return const LoginScreen(); // We will need to update this to match new UI
       },
     );

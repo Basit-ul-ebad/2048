@@ -9,13 +9,20 @@ class NotificationProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _notifications = [];
   int _unreadCount = 0;
   StreamSubscription<QuerySnapshot>? _subscription;
+  bool _isListening = false;
+  String? _currentUserId;
 
   NotificationProvider(this._notificationService);
 
   List<Map<String, dynamic>> get notifications => _notifications;
   int get unreadCount => _unreadCount;
+  bool get isListening => _isListening;
 
   void listenToNotifications(String userId) {
+    if (_isListening && _currentUserId == userId) return;
+    _isListening = true;
+    _currentUserId = userId;
+
     _subscription?.cancel();
     _subscription = _notificationService.streamNotifications(userId).listen((snapshot) {
       _notifications = snapshot.docs.map((doc) {
@@ -28,6 +35,16 @@ class NotificationProvider extends ChangeNotifier {
       _unreadCount = _notifications.where((n) => n['isRead'] == false).length;
       notifyListeners();
     });
+  }
+
+  void stopListening() {
+    _subscription?.cancel();
+    _subscription = null;
+    _isListening = false;
+    _currentUserId = null;
+    _notifications = [];
+    _unreadCount = 0;
+    notifyListeners();
   }
 
   Future<void> markAsRead(String notificationId) async {
