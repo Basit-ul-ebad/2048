@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/ranks.dart';
+import '../../../../core/utils/nickname_utils.dart';
 import '../../providers/profile_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -58,7 +59,7 @@ class ProfileScreen extends StatelessWidget {
                     radius: 50,
                     backgroundColor: Ranks.getRankColor(user.rank),
                     child: Text(
-                      user.nickname.substring(0, 1).toUpperCase(),
+                      NicknameUtils.initial(user.nickname),
                       style: const TextStyle(fontSize: 48, color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),

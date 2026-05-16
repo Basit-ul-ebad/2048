@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -42,6 +43,28 @@ class FirestoreService {
 
   Future<DocumentSnapshot> getUserProfile(String uid) {
     return users.doc(uid).get();
+  }
+
+  /// Ensures the signed-in user's basic auth fields exist on their profile doc.
+  Future<void> syncUserProfile(User user) async {
+    await users.doc(user.uid).set(
+          {
+            if (user.email != null) 'email': user.email,
+            if (user.displayName != null) 'displayName': user.displayName,
+            if (user.photoURL != null) 'photoUrl': user.photoURL,
+            'lastSyncedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+  }
+
+  /// Finished single-player (or other) runs saved under `users/{uid}/runs`.
+  Stream<QuerySnapshot<Map<String, dynamic>>> runsForUser(String uid) {
+    return users
+        .doc(uid)
+        .collection('runs')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 
   // Sync Score

@@ -32,4 +32,22 @@ class BoardModel {
       isWon: isWon ?? this.isWon,
     );
   }
+
+  factory BoardModel.fromJson(Map<String, dynamic> json) {
+    return BoardModel(
+      tiles: List<int>.from(
+        (json['tiles'] as List<dynamic>).map((e) => (e as num).toInt()),
+      ),
+      score: (json['score'] as num).toInt(),
+      isGameOver: json['isGameOver'] as bool? ?? false,
+      isWon: json['isWon'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'tiles': tiles,
+        'score': score,
+        'isGameOver': isGameOver,
+        'isWon': isWon,
+      };
 }

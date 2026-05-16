@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/ranks.dart';
+import '../../../core/utils/nickname_utils.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../../game/presentation/screens/game_screen.dart';
@@ -103,7 +104,7 @@ class ModeSelectionScreen extends StatelessWidget {
                               radius: 30,
                               backgroundColor: AppColors.getTileColor(2048),
                               child: Text(
-                                user.nickname.substring(0, 1).toUpperCase(),
+                                NicknameUtils.initial(user.nickname),
                                 style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
                               ),
                             ),

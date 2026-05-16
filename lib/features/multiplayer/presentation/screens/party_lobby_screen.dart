@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../core/utils/nickname_utils.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/party_provider.dart';
 import 'online_multiplayer_screen.dart'; // We'll reuse this screen but feed it the party match ID
@@ -122,12 +123,15 @@ class PartyLobbyScreen extends StatelessWidget {
           radius: 40,
           backgroundColor: AppColors.getTileColor(2),
           child: Text(
-            profile['nickname'].substring(0, 1).toUpperCase(),
+            NicknameUtils.initial(profile['nickname'] as String?),
             style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textDark),
           ),
         ),
         const SizedBox(height: 8),
-        Text(profile['nickname'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark)),
+        Text(
+          NicknameUtils.displayName(profile['nickname'] as String?),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark),
+        ),
       ],
     );
   }

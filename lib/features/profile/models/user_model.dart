@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/utils/nickname_utils.dart';
 
 class UserModel {
   final String uid;
@@ -49,7 +50,10 @@ class UserModel {
 
     return UserModel(
       uid: doc.id,
-      nickname: data['nickname'] ?? '',
+      nickname: NicknameUtils.displayName(
+        data['nickname'] as String?,
+        email: data['email'] as String?,
+      ),
       email: data['email'] ?? '',
       highestScore: data['highestScore'] ?? 0,
       currentLevel: data['currentLevel'] ?? 1,

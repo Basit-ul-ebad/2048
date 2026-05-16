@@ -7,22 +7,22 @@ import '../../../services/firebase/realtime_service.dart';
 enum MatchState { idle, searching, playing, finished }
 
 class MultiplayerProvider extends ChangeNotifier {
+  MultiplayerProvider(this._matchmakingService, this._realtimeService);
+
   final MatchmakingService _matchmakingService;
   final RealtimeService _realtimeService;
 
   MatchState _state = MatchState.idle;
   String? _currentMatchId;
-  String? _opponentId;
+  String? _localPlayerPrefix;
   
-  int _opponentScore = 0;
   List<int> _opponentBoard = List.filled(16, 0);
+  int _opponentScore = 0;
   String? _opponentEmote;
   int? _opponentEmoteTime;
 
-  StreamSubscription<DatabaseEvent>? _matchSubscription;
   StreamSubscription<DatabaseEvent>? _queueSubscription;
-
-  MultiplayerProvider(this._matchmakingService, this._realtimeService);
+  StreamSubscription<DatabaseEvent>? _matchSubscription;
 
   MatchState get state => _state;
   List<int> get opponentBoard => _opponentBoard;
@@ -77,10 +77,6 @@ class MultiplayerProvider extends ChangeNotifier {
     }
   }
 
-  String _getLocalPrefix(String localUserId, Map<dynamic, dynamic> data) {
-    return (localUserId == data['player1Id']) ? 'player1' : 'player2';
-  }
-
   void _listenToMatch(String matchId, String localUserId) {
     _matchSubscription = _realtimeService.streamMatchState(matchId).listen((event) {
       if (event.snapshot.value != null) {
@@ -89,7 +85,7 @@ class MultiplayerProvider extends ChangeNotifier {
         final p1Id = data['player1Id'];
         final p2Id = data['player2Id'];
         
-        _opponentId = (localUserId == p1Id) ? p2Id : p1Id;
+        _localPlayerPrefix = (localUserId == p1Id) ? 'player1' : 'player2';
         final opponentPrefix = (localUserId == p1Id) ? 'player2' : 'player1';
 
         // Update opponent board and score via stream throttling / performance layer
@@ -97,7 +93,7 @@ class MultiplayerProvider extends ChangeNotifier {
           _opponentBoard = List<int>.from(data['${opponentPrefix}_board']);
         }
         if (data['${opponentPrefix}_score'] != null) {
-          _opponentScore = data['${opponentPrefix}_score'] as int;
+          _opponentScore = (data['${opponentPrefix}_score'] as num).toInt();
         }
         
         // Emotes
@@ -127,11 +123,7 @@ class MultiplayerProvider extends ChangeNotifier {
 
   void syncLocalBoard(String userId, List<int> board, int score, {bool force = false}) {
     if (_currentMatchId != null && _state == MatchState.playing) {
-      // Very basic local prefix determination, would need actual state tracking for real app
-      // Assuming if _opponentId is not null, we just use a generic fetch approach or assume player1 for demo
-      // Let's assume we store local prefix when we enter match, or we pass it in. 
-      // For this simple demo, we will query realtime data again or just default to player1
-      final playerPrefix = 'player1'; // Needs real fix in production
+      final playerPrefix = _localPlayerPrefix ?? 'player1';
       
       _realtimeService.syncBoardState(
         matchId: _currentMatchId!,
@@ -145,8 +137,7 @@ class MultiplayerProvider extends ChangeNotifier {
 
   Future<void> sendEmote(String emote, String userId) async {
     if (_currentMatchId != null && _state == MatchState.playing) {
-      // Again, assuming player1 prefix for simple demo.
-      final playerPrefix = 'player1'; 
+      final playerPrefix = _localPlayerPrefix ?? 'player1';
       await _realtimeService.sendEmote(matchId: _currentMatchId!, playerId: playerPrefix, emote: emote);
     }
   }
