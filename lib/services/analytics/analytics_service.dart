@@ -279,6 +279,14 @@ class AnalyticsService {
     });
   }
 
+  /// Fires a test event — use with Firebase DebugView (see scripts/enable_firebase_debug.sh).
+  Future<void> logDebugTestEvent() async {
+    await _log('debug_test_ping', {
+      'source': 'settings',
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   static int highestTileOnBoard(List<int> board) {

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../logic/game_engine.dart';
+import '../models/single_player_mode.dart';
 import '../../../core/constants/game_constants.dart';
 import '../../../services/storage/local_storage_service.dart';
 import '../../../services/firebase/firestore_service.dart';
@@ -32,6 +34,10 @@ class GameProvider extends ChangeNotifier {
   bool _endedManually = false;
   bool _isMultiplayer = false;
   String _mode = AnalyticsModes.singlePlayer;
+  SinglePlayerMode _singlePlayerMode = SinglePlayerMode.classic;
+  Timer? _timer;
+  int _secondsRemaining = 0;
+  String? _endReason;
 
   List<int> get board => _board;
   int get score => _score;
@@ -39,21 +45,26 @@ class GameProvider extends ChangeNotifier {
   bool get isGameWon => _isGameWon;
   bool get endedManually => _endedManually;
   bool get isFinished => _isGameOver || _isGameWon;
-
-  /// True while the player can still swipe or end the session.
   bool get isPlaying => !_isGameOver && !_isGameWon;
+  SinglePlayerMode get singlePlayerMode => _singlePlayerMode;
+  int get secondsRemaining => _secondsRemaining;
+  String? get endReason => _endReason;
 
   void initializeGame({
     bool isMultiplayer = false,
     String mode = AnalyticsModes.singlePlayer,
+    SinglePlayerMode? singlePlayerMode,
   }) {
+    _timer?.cancel();
     _isMultiplayer = isMultiplayer;
     _mode = mode;
+    _singlePlayerMode = singlePlayerMode ?? SinglePlayerMode.classic;
     _isGameOver = false;
     _isGameWon = false;
     _endedManually = false;
+    _endReason = null;
 
-    if (!_isMultiplayer) {
+    if (!_isMultiplayer && _singlePlayerMode.isClassic) {
       final savedBoardJson = _localStorageService.savedBoard;
       if (savedBoardJson != null) {
         try {
@@ -62,23 +73,51 @@ class GameProvider extends ChangeNotifier {
           _score = _localStorageService.savedScore;
           notifyListeners();
           return;
-        } catch (e) {
-          // Fallback if parsing fails
-        }
+        } catch (_) {}
       }
     }
 
     _board = List.filled(16, 0);
     _score = 0;
-
     _board = _engine.addRandomTile(_board);
     _board = _engine.addRandomTile(_board);
 
-    if (!isMultiplayer) {
+    if (!_isMultiplayer) {
       _session.start(mode: mode);
+      _startTimerIfNeeded();
     }
 
-    _saveGameState();
+    if (_singlePlayerMode.isClassic && !_isMultiplayer) {
+      _saveGameState();
+    }
+    notifyListeners();
+  }
+
+  void _startTimerIfNeeded() {
+    final limit = _singlePlayerMode.timeLimitSeconds;
+    if (limit == null) return;
+
+    _secondsRemaining = limit;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _secondsRemaining--;
+      if (_secondsRemaining <= 0) {
+        _timer?.cancel();
+        _endTimedGame(reason: 'Time\'s up!');
+      } else {
+        notifyListeners();
+      }
+    });
+  }
+
+  void _endTimedGame({required String reason}) {
+    if (!isPlaying) return;
+    _endReason = reason;
+    _isGameOver = true;
+    _localStorageService.clearSavedGame();
+    _finalizeSession();
+    if (!_singlePlayerMode.isClassic) {
+      _submitMatchResults();
+    }
     notifyListeners();
   }
 
@@ -93,15 +132,20 @@ class GameProvider extends ChangeNotifier {
   void restartGame({
     bool isMultiplayer = false,
     String mode = AnalyticsModes.singlePlayer,
+    SinglePlayerMode? singlePlayerMode,
   }) {
     if (!isMultiplayer) {
       _localStorageService.clearSavedGame();
     }
-    initializeGame(isMultiplayer: isMultiplayer, mode: mode);
+    initializeGame(
+      isMultiplayer: isMultiplayer,
+      mode: mode,
+      singlePlayerMode: singlePlayerMode ?? _singlePlayerMode,
+    );
   }
 
   void _saveGameState() {
-    if (_isMultiplayer) return;
+    if (_isMultiplayer || !_singlePlayerMode.isClassic) return;
 
     _localStorageService.setSavedBoard(json.encode(_board));
     _localStorageService.setSavedScore(_score);
@@ -121,14 +165,17 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
-  /// Player quits the current run (score is kept for review / leaderboard).
   void endGameManually() {
     if (!isPlaying) return;
     _endedManually = true;
+    _endReason = 'You ended the game';
+    _timer?.cancel();
     _isGameOver = true;
     _localStorageService.clearSavedGame();
     _finalizeSession();
-    _submitMatchResults();
+    if (!_singlePlayerMode.isClassic) {
+      _submitMatchResults();
+    }
     notifyListeners();
   }
 
@@ -148,8 +195,21 @@ class GameProvider extends ChangeNotifier {
         _session.trackBoard(_board, currentScore: _score);
       }
 
+      final target = _singlePlayerMode.targetScore;
+      if (target != null && _score >= target) {
+        _isGameWon = true;
+        _endReason = 'Target score reached!';
+        _feedback.onWin();
+        _timer?.cancel();
+        _finalizeSession();
+        _submitMatchResults();
+        notifyListeners();
+        return;
+      }
+
       if (_engine.checkWin(_board)) {
         _isGameWon = true;
+        _endReason = 'You reached 2048!';
         _feedback.onWin();
       }
 
@@ -157,14 +217,23 @@ class GameProvider extends ChangeNotifier {
 
       if (_engine.checkGameOver(_board)) {
         _isGameOver = true;
+        _endReason = 'No moves left';
+        _timer?.cancel();
         _localStorageService.clearSavedGame();
         _finalizeSession();
-        _submitMatchResults();
+        if (!_singlePlayerMode.isClassic) {
+          _submitMatchResults();
+        }
       } else if (_isGameWon) {
+        _timer?.cancel();
         _finalizeSession();
-        _submitMatchResults();
-        _saveGameState();
-      } else {
+        if (!_singlePlayerMode.isClassic) {
+          _submitMatchResults();
+        }
+        if (_singlePlayerMode.isClassic) {
+          _saveGameState();
+        }
+      } else if (_singlePlayerMode.isClassic) {
         _saveGameState();
       }
 
@@ -177,18 +246,16 @@ class GameProvider extends ChangeNotifier {
     if (velocity.dx.abs() > GameConstants.swipeVelocityThreshold ||
         velocity.dy.abs() > GameConstants.swipeVelocityThreshold) {
       if (velocity.dx.abs() > velocity.dy.abs()) {
-        if (velocity.dx > 0) {
-          handleSwipe(1);
-        } else {
-          handleSwipe(0);
-        }
+        handleSwipe(velocity.dx > 0 ? 1 : 0);
       } else {
-        if (velocity.dy > 0) {
-          handleSwipe(3);
-        } else {
-          handleSwipe(2);
-        }
+        handleSwipe(velocity.dy > 0 ? 3 : 2);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }

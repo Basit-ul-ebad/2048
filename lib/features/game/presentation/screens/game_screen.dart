@@ -8,10 +8,13 @@ import '../../../coach/presentation/coach_helper.dart';
 import '../../../settings/providers/settings_provider.dart';
 import '../../../../services/ai_coach/coach_session_limits.dart';
 import '../../../../services/analytics/analytics_constants.dart';
+import '../../models/single_player_mode.dart';
 import '../widgets/game_board.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  const GameScreen({super.key, this.singlePlayerMode = SinglePlayerMode.classic});
+
+  final SinglePlayerMode singlePlayerMode;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -26,7 +29,9 @@ class _GameScreenState extends State<GameScreen> {
     super.initState();
     _coachLimits.reset();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GameProvider>().initializeGame();
+      context.read<GameProvider>().initializeGame(
+            singlePlayerMode: widget.singlePlayerMode,
+          );
     });
   }
 
@@ -40,11 +45,12 @@ class _GameScreenState extends State<GameScreen> {
             ? 'Game ended'
             : 'Game Over';
 
-    final subtitle = provider.endedManually
-        ? 'You chose to stop this run.'
-        : provider.isGameWon
-            ? 'You reached 2048!'
-            : 'No more moves left.';
+    final subtitle = provider.endReason ??
+        (provider.endedManually
+            ? 'You chose to stop this run.'
+            : provider.isGameWon
+                ? 'You reached 2048!'
+                : 'No more moves left.');
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -60,7 +66,7 @@ class _GameScreenState extends State<GameScreen> {
         onRestart: () {
           _endDialogShown = false;
           _coachLimits.reset();
-          provider.restartGame();
+          provider.restartGame(singlePlayerMode: widget.singlePlayerMode);
         },
         onExit: () => Navigator.of(context).pop(),
       );
@@ -113,10 +119,10 @@ class _GameScreenState extends State<GameScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Single Player',
-          style: TextStyle(
-            fontSize: 24,
+        title: Text(
+          widget.singlePlayerMode.title,
+          style: const TextStyle(
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: AppColors.textDark,
           ),
@@ -205,6 +211,37 @@ class _GameScreenState extends State<GameScreen> {
                           ],
                         ),
                       ),
+                      if (gameProvider.singlePlayerMode.hasTimer) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.getTileColor(128),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'TIME',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textLight,
+                                ),
+                              ),
+                              Text(
+                                '${gameProvider.secondsRemaining}s',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (widget.singlePlayerMode.isClassic) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -233,6 +270,7 @@ class _GameScreenState extends State<GameScreen> {
                           ],
                         ),
                       ),
+                      ],
                     ],
                   ),
                   Row(
@@ -252,7 +290,7 @@ class _GameScreenState extends State<GameScreen> {
                         onPressed: () {
                           _endDialogShown = false;
                           _coachLimits.reset();
-                          gameProvider.restartGame();
+                          gameProvider.restartGame(singlePlayerMode: widget.singlePlayerMode);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.getTileColor(32),

@@ -108,6 +108,7 @@ class MyApp extends StatelessWidget {
             matchmakingService,
             realtimeService,
             analyticsService,
+            firestoreService,
           ),
         ),
         ChangeNotifierProvider(
@@ -127,7 +128,7 @@ class MyApp extends StatelessWidget {
           create: (_) => FriendsProvider(firestoreService, analyticsService),
         ),
         ChangeNotifierProvider(
-          create: (_) => NotificationProvider(notificationService),
+          create: (_) => NotificationProvider(notificationService, matchmakingService),
         ),
       ],
       child: Consumer<SettingsProvider>(

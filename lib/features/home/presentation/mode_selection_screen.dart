@@ -5,10 +5,11 @@ import '../../../core/constants/ranks.dart';
 import '../../../core/utils/nickname_utils.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../profile/providers/profile_provider.dart';
-import '../../game/presentation/screens/game_screen.dart';
+import 'single_player_modes_screen.dart';
+import '../../../../core/constants/match_constants.dart';
+import '../../multiplayer/presentation/screens/matchmaking_screen.dart';
 import '../../multiplayer/presentation/screens/local_multiplayer_screen.dart';
 import '../../ai/presentation/screens/ai_difficulty_screen.dart';
-import '../../multiplayer/presentation/screens/matchmaking_screen.dart';
 import '../../leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../friends/presentation/screens/friends_screen.dart';
 import '../../shop/presentation/screens/shop_screen.dart';
@@ -161,7 +162,9 @@ class ModeSelectionScreen extends StatelessWidget {
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (context) => const GameScreen()),
+                                  MaterialPageRoute(
+                                    builder: (context) => const SinglePlayerModesScreen(),
+                                  ),
                                 );
                               },
                             ),
@@ -200,9 +203,7 @@ class ModeSelectionScreen extends StatelessWidget {
                               title: 'Quick Match',
                               icon: Icons.public,
                               color: AppColors.getTileColor(128),
-                              onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => const MatchmakingScreen()));
-                              },
+                              onPressed: () => _showQuickMatchDurationPicker(context),
                             ),
                             _buildModeCard(
                               context,
@@ -265,6 +266,56 @@ class ModeSelectionScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showQuickMatchDurationPicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Quick Match duration',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
+              ),
+              const SizedBox(height: 16),
+              ...MatchDurations.all.map((seconds) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.getTileColor(128),
+                      minimumSize: const Size(double.infinity, 48),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MatchmakingScreen(matchDurationSeconds: seconds),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      MatchDurations.label(seconds),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 

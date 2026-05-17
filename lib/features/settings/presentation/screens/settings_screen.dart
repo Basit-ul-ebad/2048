@@ -4,6 +4,7 @@ import '../../../../core/constants/colors.dart';
 import '../../providers/settings_provider.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../ai/models/ai_difficulty.dart';
+import '../../../../services/analytics/analytics_service.dart';
 import '../../../../services/feedback/feedback_service.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -52,6 +53,29 @@ class SettingsScreen extends StatelessWidget {
               onChanged: (_) => settings.toggleAnalytics(),
             ),
           ),
+          if (settings.analyticsEnabled) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextButton.icon(
+                onPressed: () async {
+                  await context.read<AnalyticsService>().logDebugTestEvent();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Sent debug_test_ping. Check Firebase DebugView '
+                        '(enable debug mode on phone first — see scripts/enable_firebase_debug.sh).',
+                      ),
+                      duration: Duration(seconds: 5),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.bug_report_outlined, size: 18),
+                label: const Text('Send test analytics event'),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

@@ -96,6 +96,52 @@ class FirestoreService {
     }
   }
 
+  /// Timed online match EXP (duration-based rewards).
+  Future<void> addMultiplayerExp(
+    String uid, {
+    required int durationSeconds,
+    required bool won,
+  }) async {
+    try {
+      final doc = await users.doc(uid).get();
+      if (!doc.exists) return;
+
+      final data = doc.data() as Map<String, dynamic>;
+      var gainedExp = won
+          ? _expForDuration(durationSeconds, win: true)
+          : _expForDuration(durationSeconds, win: false);
+
+      final newExp = (data['exp'] ?? 0) + gainedExp;
+      final newLevel = (newExp / 1000).floor() + 1;
+      final wins = (data['wins'] ?? 0) + (won ? 1 : 0);
+      final losses = (data['losses'] ?? 0) + (won ? 0 : 1);
+
+      await users.doc(uid).update({
+        'exp': newExp,
+        'currentLevel': newLevel,
+        'rank': _rankForLevel(newLevel),
+        'wins': wins,
+        'losses': losses,
+        'totalGames': (data['totalGames'] ?? 0) + 1,
+      });
+    } catch (e) {
+      print('Error updating multiplayer exp: $e');
+    }
+  }
+
+  int _expForDuration(int seconds, {required bool win}) {
+    if (seconds <= 60) return win ? 80 : 40;
+    if (seconds <= 90) return win ? 100 : 50;
+    return win ? 120 : 60;
+  }
+
+  String _rankForLevel(int level) {
+    if (level >= 50) return 'Diamond';
+    if (level >= 30) return 'Gold';
+    if (level >= 10) return 'Silver';
+    return 'Bronze';
+  }
+
   // XP & Achievements System
   Future<void> addMatchResults(String uid, int finalScore) async {
     try {

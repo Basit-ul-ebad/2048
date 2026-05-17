@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../core/constants/match_constants.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/multiplayer_provider.dart';
 import 'online_multiplayer_screen.dart';
 
 class MatchmakingScreen extends StatefulWidget {
-  const MatchmakingScreen({super.key});
+  const MatchmakingScreen({super.key, required this.matchDurationSeconds});
+
+  final int matchDurationSeconds;
 
   @override
   State<MatchmakingScreen> createState() => _MatchmakingScreenState();
@@ -19,9 +22,21 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
-        context.read<MultiplayerProvider>().findMatch(user.uid);
+        context.read<MultiplayerProvider>().findMatch(
+              user.uid,
+              matchDurationSeconds: widget.matchDurationSeconds,
+            );
       }
     });
+  }
+
+  @override
+  void dispose() {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user != null) {
+      context.read<MultiplayerProvider>().cancelSearch(user.uid);
+    }
+    super.dispose();
   }
 
   @override
@@ -30,9 +45,14 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
       builder: (context, provider, child) {
         if (provider.state == MatchState.playing) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const OnlineMultiplayerScreen()),
+              MaterialPageRoute(
+                builder: (context) => OnlineMultiplayerScreen(
+                  matchDurationSeconds: widget.matchDurationSeconds,
+                ),
+              ),
             );
           });
         }
@@ -52,6 +72,10 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                 Navigator.pop(context);
               },
             ),
+            title: Text(
+              MatchDurations.label(widget.matchDurationSeconds),
+              style: const TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold),
+            ),
           ),
           body: Center(
             child: Column(
@@ -62,12 +86,13 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                 Text(
                   provider.state == MatchState.searching
                       ? 'Searching for opponent...'
-                      : 'Match Found! Preparing...',
+                      : 'Match found! Preparing...',
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
