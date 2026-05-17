@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../game/providers/game_provider.dart';
+import '../../../../services/analytics/analytics_constants.dart';
 import '../../providers/multiplayer_provider.dart';
 import '../../../game/presentation/widgets/game_board.dart';
 
@@ -18,7 +19,10 @@ class _OnlineMultiplayerScreenState extends State<OnlineMultiplayerScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GameProvider>().initializeGame(isMultiplayer: true);
+      context.read<GameProvider>().initializeGame(
+        isMultiplayer: true,
+        mode: AnalyticsModes.quickMatch,
+      );
       context.read<GameProvider>().addListener(_onLocalBoardChanged);
     });
   }

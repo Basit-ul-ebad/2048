@@ -3,19 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../../services/firebase/matchmaking_service.dart';
 import '../../../services/firebase/realtime_service.dart';
+import '../../../services/analytics/analytics_service.dart';
+import '../../../services/analytics/analytics_constants.dart';
 
 enum MatchState { idle, searching, playing, finished }
 
 class MultiplayerProvider extends ChangeNotifier {
-  MultiplayerProvider(this._matchmakingService, this._realtimeService);
+  MultiplayerProvider(
+    this._matchmakingService,
+    this._realtimeService,
+    this._analytics,
+  );
 
   final MatchmakingService _matchmakingService;
   final RealtimeService _realtimeService;
+  final AnalyticsService _analytics;
 
   MatchState _state = MatchState.idle;
   String? _currentMatchId;
   String? _localPlayerPrefix;
-  
+
   List<int> _opponentBoard = List.filled(16, 0);
   int _opponentScore = 0;
   String? _opponentEmote;
@@ -23,6 +30,12 @@ class MultiplayerProvider extends ChangeNotifier {
 
   StreamSubscription<DatabaseEvent>? _queueSubscription;
   StreamSubscription<DatabaseEvent>? _matchSubscription;
+
+  DateTime? _matchStartedAt;
+  bool _matchStartLogged = false;
+  bool _matchEndLogged = false;
+  int _localScore = 0;
+  int _opponentScoreAtEnd = 0;
 
   MatchState get state => _state;
   List<int> get opponentBoard => _opponentBoard;
@@ -32,23 +45,23 @@ class MultiplayerProvider extends ChangeNotifier {
 
   Future<void> findMatch(String userId) async {
     _state = MatchState.searching;
+    _matchStartLogged = false;
+    _matchEndLogged = false;
     notifyListeners();
 
     final matchId = await _matchmakingService.joinQueue(userId);
 
     if (matchId != null) {
-      // Match found immediately!
       _currentMatchId = matchId;
       _state = MatchState.playing;
       _listenToMatch(matchId, userId);
+      await _logMatchStarted();
     } else {
-      // Waiting in queue. Listen to queue to see if someone matches us
       _queueSubscription = _matchmakingService.matchmakingQueue
           .orderByChild('userId')
           .equalTo(userId)
           .onChildRemoved
           .listen((event) {
-        // Our queue item was removed, check for a match
         _checkIfMatched(userId);
       });
     }
@@ -56,9 +69,6 @@ class MultiplayerProvider extends ChangeNotifier {
   }
 
   Future<void> _checkIfMatched(String userId) async {
-    // A more robust implementation would involve Cloud Functions returning the match ID directly.
-    // For this client-side demo, we query the matches collection where we are a player.
-    // In a real app, this query might catch older matches unless filtered by timestamp.
     final snapshot = await _realtimeService.onlineMatches
         .orderByChild('player2Id')
         .equalTo(userId)
@@ -71,38 +81,65 @@ class MultiplayerProvider extends ChangeNotifier {
       _currentMatchId = matchId;
       _state = MatchState.playing;
       _listenToMatch(matchId, userId);
-      
+
       _queueSubscription?.cancel();
+      await _logMatchStarted();
       notifyListeners();
     }
+  }
+
+  Future<void> _logMatchStarted() async {
+    if (_matchStartLogged) return;
+    _matchStartLogged = true;
+    _matchStartedAt = DateTime.now();
+    await _analytics.logQuickMatchUsed();
+    await _analytics.logMultiplayerMatchStarted(
+      mode: AnalyticsModes.quickMatch,
+      opponentType: 'online_random',
+    );
+  }
+
+  Future<void> _logMatchFinished(String winOrLoss) async {
+    if (_matchEndLogged) return;
+    _matchEndLogged = true;
+    final duration = _matchStartedAt == null
+        ? 0
+        : DateTime.now().difference(_matchStartedAt!).inSeconds;
+    await _analytics.logMultiplayerMatchFinished(
+      mode: AnalyticsModes.quickMatch,
+      winOrLoss: winOrLoss,
+      matchDurationSeconds: duration,
+      opponentType: 'online_random',
+    );
   }
 
   void _listenToMatch(String matchId, String localUserId) {
     _matchSubscription = _realtimeService.streamMatchState(matchId).listen((event) {
       if (event.snapshot.value != null) {
         final data = event.snapshot.value as Map<dynamic, dynamic>;
-        
+
         final p1Id = data['player1Id'];
         final p2Id = data['player2Id'];
-        
+
         _localPlayerPrefix = (localUserId == p1Id) ? 'player1' : 'player2';
         final opponentPrefix = (localUserId == p1Id) ? 'player2' : 'player1';
 
-        // Update opponent board and score via stream throttling / performance layer
+        if (data['${_localPlayerPrefix}_score'] != null) {
+          _localScore = (data['${_localPlayerPrefix}_score'] as num).toInt();
+        }
         if (data['${opponentPrefix}_board'] != null) {
           _opponentBoard = List<int>.from(data['${opponentPrefix}_board']);
         }
         if (data['${opponentPrefix}_score'] != null) {
           _opponentScore = (data['${opponentPrefix}_score'] as num).toInt();
+          _opponentScoreAtEnd = _opponentScore;
         }
-        
-        // Emotes
+
         if (data['${opponentPrefix}_emote'] != null && data['${opponentPrefix}_emoteTime'] != null) {
           final emoteTime = data['${opponentPrefix}_emoteTime'] as int;
           if (_opponentEmoteTime == null || emoteTime > _opponentEmoteTime!) {
             _opponentEmoteTime = emoteTime;
             _opponentEmote = data['${opponentPrefix}_emote'];
-            // Clear emote after 3 seconds
             Future.delayed(const Duration(seconds: 3), () {
               if (_opponentEmoteTime == emoteTime) {
                 _opponentEmote = null;
@@ -114,6 +151,12 @@ class MultiplayerProvider extends ChangeNotifier {
 
         if (data['gameState'] == 'finished') {
           _state = MatchState.finished;
+          final winOrLoss = _localScore >= _opponentScoreAtEnd ? 'win' : 'loss';
+          if (_localScore == _opponentScoreAtEnd) {
+            _logMatchFinished('draw');
+          } else {
+            _logMatchFinished(winOrLoss);
+          }
         }
 
         notifyListeners();
@@ -122,12 +165,13 @@ class MultiplayerProvider extends ChangeNotifier {
   }
 
   void syncLocalBoard(String userId, List<int> board, int score, {bool force = false}) {
+    _localScore = score;
     if (_currentMatchId != null && _state == MatchState.playing) {
       final playerPrefix = _localPlayerPrefix ?? 'player1';
-      
+
       _realtimeService.syncBoardState(
         matchId: _currentMatchId!,
-        playerId: playerPrefix, // Should be dynamic
+        playerId: playerPrefix,
         board: board,
         score: score,
         forceSync: force,
@@ -138,7 +182,11 @@ class MultiplayerProvider extends ChangeNotifier {
   Future<void> sendEmote(String emote, String userId) async {
     if (_currentMatchId != null && _state == MatchState.playing) {
       final playerPrefix = _localPlayerPrefix ?? 'player1';
-      await _realtimeService.sendEmote(matchId: _currentMatchId!, playerId: playerPrefix, emote: emote);
+      await _realtimeService.sendEmote(
+        matchId: _currentMatchId!,
+        playerId: playerPrefix,
+        emote: emote,
+      );
     }
   }
 

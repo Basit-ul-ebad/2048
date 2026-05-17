@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../logic/game_controller.dart';
 import '../../models/board_model.dart';
 import '../widgets/game_board.dart';
 import '../../../../services/storage/storage_service.dart';
+import '../../../../services/feedback/feedback_service.dart';
+import '../../../../services/analytics/analytics_service.dart';
+import '../../../../services/analytics/analytics_constants.dart';
 
 class MultiplayerGameScreen extends StatefulWidget {
   final String player1;
@@ -24,8 +28,8 @@ class MultiplayerGameScreen extends StatefulWidget {
 }
 
 class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
-  late GameController _controller1;
-  late GameController _controller2;
+  GameController? _controller1;
+  GameController? _controller2;
   
   BoardModel _board1 = BoardModel.empty();
   BoardModel _board2 = BoardModel.empty();
@@ -33,6 +37,9 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
   late Timer _timer;
   int _remainingSeconds = 0;
   bool _gameEnded = false;
+  bool _controllersReady = false;
+  DateTime? _matchStartedAt;
+  bool _matchAnalyticsLogged = false;
 
   @override
   void initState() {
@@ -44,20 +51,6 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
     ]);
 
     _remainingSeconds = widget.durationMinutes * 60;
-    
-    _controller1 = GameController(
-      onStateUpdate: (b) => setState(() => _board1 = b),
-      onWin: () {},
-      onGameOver: () {},
-    );
-    _controller2 = GameController(
-      onStateUpdate: (b) => setState(() => _board2 = b),
-      onWin: () {},
-      onGameOver: () {},
-    );
-
-    _controller1.initializeGame();
-    _controller2.initializeGame();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
@@ -69,6 +62,36 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
         _endGame();
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controllersReady) return;
+    _controllersReady = true;
+
+    final feedback = context.read<FeedbackService>();
+    _controller1 = GameController(
+      onStateUpdate: (b) => setState(() => _board1 = b),
+      onWin: () {},
+      onGameOver: () {},
+      feedback: feedback,
+    );
+    _controller2 = GameController(
+      onStateUpdate: (b) => setState(() => _board2 = b),
+      onWin: () {},
+      onGameOver: () {},
+      feedback: feedback,
+    );
+    _controller1!.initializeGame();
+    _controller2!.initializeGame();
+
+    _matchStartedAt = DateTime.now();
+    _matchAnalyticsLogged = false;
+    context.read<AnalyticsService>().logMultiplayerMatchStarted(
+      mode: AnalyticsModes.timedLocal,
+      opponentType: 'local_timed',
+    );
   }
 
   void _endGame() {
@@ -89,6 +112,19 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
 
     if (winner != 'Tie') {
       StorageService().recordMatchScore(winner, loser);
+    }
+
+    if (!_matchAnalyticsLogged) {
+      _matchAnalyticsLogged = true;
+      final duration = _matchStartedAt == null
+          ? widget.durationMinutes * 60
+          : DateTime.now().difference(_matchStartedAt!).inSeconds;
+      context.read<AnalyticsService>().logMultiplayerMatchFinished(
+        mode: AnalyticsModes.timedLocal,
+        winOrLoss: winner == 'Tie' ? 'draw' : 'completed',
+        matchDurationSeconds: duration,
+        opponentType: 'local_timed',
+      );
     }
 
     showDialog(
@@ -147,13 +183,13 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
   }
 
   void _onSwipe1(DragEndDetails details) {
-    if (_gameEnded || _board1.isGameOver) return;
-    _handleSwipe(details, _controller1);
+    if (_gameEnded || _board1.isGameOver || _controller1 == null) return;
+    _handleSwipe(details, _controller1!);
   }
 
   void _onSwipe2(DragEndDetails details) {
-    if (_gameEnded || _board2.isGameOver) return;
-    _handleSwipe(details, _controller2);
+    if (_gameEnded || _board2.isGameOver || _controller2 == null) return;
+    _handleSwipe(details, _controller2!);
   }
   
   void _handleSwipe(DragEndDetails details, GameController controller) {

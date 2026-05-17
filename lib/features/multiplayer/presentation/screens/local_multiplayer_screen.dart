@@ -1,7 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../game/logic/game_engine.dart';
 import '../../../game/presentation/widgets/game_board.dart';
+import '../../../../services/feedback/feedback_service.dart';
+import '../../../../services/analytics/analytics_service.dart';
+import '../../../../services/analytics/analytics_constants.dart';
 
 class LocalMultiplayerScreen extends StatefulWidget {
   const LocalMultiplayerScreen({super.key});
@@ -20,14 +26,26 @@ class _LocalMultiplayerScreenState extends State<LocalMultiplayerScreen> {
   List<int> _board2 = List.filled(16, 0);
   int _score2 = 0;
   bool _isGameOver2 = false;
+  DateTime? _matchStartedAt;
+  bool _matchEndLogged = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeGame();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeGame(logAnalytics: true);
+    });
   }
 
-  void _initializeGame() {
+  void _initializeGame({bool logAnalytics = false}) {
+    _matchStartedAt = DateTime.now();
+    _matchEndLogged = false;
+    if (logAnalytics && mounted) {
+      context.read<AnalyticsService>().logMultiplayerMatchStarted(
+        mode: AnalyticsModes.localMultiplayer,
+        opponentType: 'local_human',
+      );
+    }
     setState(() {
       _board1 = _engine.addRandomTile(_engine.addRandomTile(List.filled(16, 0)));
       _board2 = _engine.addRandomTile(_engine.addRandomTile(List.filled(16, 0)));
@@ -55,11 +73,16 @@ class _LocalMultiplayerScreenState extends State<LocalMultiplayerScreen> {
   void _movePlayer1(int direction) {
     final result = _engine.move(_board1, direction);
     if (result['moved']) {
+      final scoreGained = result['scoreGained'] as int;
       setState(() {
         _board1 = _engine.addRandomTile(result['board']);
-        _score1 += result['scoreGained'] as int;
+        _score1 += scoreGained;
         _isGameOver1 = _engine.checkGameOver(_board1);
       });
+      _playMoveFeedback(scoreGained);
+      if (_engine.checkWin(_board1)) {
+        context.read<FeedbackService>().onWin();
+      }
       _checkOverallGameOver();
     }
   }
@@ -81,13 +104,23 @@ class _LocalMultiplayerScreenState extends State<LocalMultiplayerScreen> {
   void _movePlayer2(int direction) {
     final result = _engine.move(_board2, direction);
     if (result['moved']) {
+      final scoreGained = result['scoreGained'] as int;
       setState(() {
         _board2 = _engine.addRandomTile(result['board']);
-        _score2 += result['scoreGained'] as int;
+        _score2 += scoreGained;
         _isGameOver2 = _engine.checkGameOver(_board2);
       });
+      _playMoveFeedback(scoreGained);
+      if (_engine.checkWin(_board2)) {
+        context.read<FeedbackService>().onWin();
+      }
       _checkOverallGameOver();
     }
+  }
+
+  void _playMoveFeedback(int scoreGained) {
+    if (!mounted) return;
+    context.read<FeedbackService>().onMove(scoreGained: scoreGained);
   }
 
   void _checkOverallGameOver() {
@@ -95,6 +128,22 @@ class _LocalMultiplayerScreenState extends State<LocalMultiplayerScreen> {
       String winner = "It's a Tie!";
       if (_score1 > _score2) winner = "Player 1 Wins!";
       if (_score2 > _score1) winner = "Player 2 Wins!";
+
+      if (!_matchEndLogged) {
+        _matchEndLogged = true;
+        final duration = _matchStartedAt == null
+            ? 0
+            : DateTime.now().difference(_matchStartedAt!).inSeconds;
+        var winOrLoss = 'draw';
+        if (_score1 > _score2) winOrLoss = 'player1_win';
+        if (_score2 > _score1) winOrLoss = 'player2_win';
+        context.read<AnalyticsService>().logMultiplayerMatchFinished(
+          mode: AnalyticsModes.localMultiplayer,
+          winOrLoss: winOrLoss,
+          matchDurationSeconds: duration,
+          opponentType: 'local_human',
+        );
+      }
 
       showDialog(
         context: context,
@@ -146,59 +195,89 @@ class _LocalMultiplayerScreenState extends State<LocalMultiplayerScreen> {
           )
         ],
       ),
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          if (orientation == Orientation.portrait) {
-            return Column(
-              children: [
-                Expanded(child: _buildPlayerSection(2, _board2, _score2, _handleSwipePlayer2, true)),
-                const Divider(height: 4, thickness: 4, color: AppColors.textDark),
-                Expanded(child: _buildPlayerSection(1, _board1, _score1, _handleSwipePlayer1, false)),
-              ],
-            );
-          } else {
-            return Row(
-              children: [
-                Expanded(child: _buildPlayerSection(1, _board1, _score1, _handleSwipePlayer1, false)),
-                const VerticalDivider(width: 4, thickness: 4, color: AppColors.textDark),
-                Expanded(child: _buildPlayerSection(2, _board2, _score2, _handleSwipePlayer2, false)),
-              ],
-            );
-          }
-        },
+      body: SafeArea(
+        child: OrientationBuilder(
+          builder: (context, orientation) {
+            if (orientation == Orientation.portrait) {
+              return Column(
+                children: [
+                  Expanded(child: _buildPlayerSection(2, _board2, _score2, _handleSwipePlayer2, true)),
+                  const Divider(height: 2, thickness: 2, color: AppColors.textDark),
+                  Expanded(child: _buildPlayerSection(1, _board1, _score1, _handleSwipePlayer1, false)),
+                ],
+              );
+            } else {
+              return Row(
+                children: [
+                  Expanded(child: _buildPlayerSection(1, _board1, _score1, _handleSwipePlayer1, false)),
+                  const VerticalDivider(width: 2, thickness: 2, color: AppColors.textDark),
+                  Expanded(child: _buildPlayerSection(2, _board2, _score2, _handleSwipePlayer2, false)),
+                ],
+              );
+            }
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildPlayerSection(int playerNum, List<int> board, int score, void Function(DragEndDetails) onSwipe, bool rotate) {
-    Widget content = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Player $playerNum - Score: $score',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: AspectRatio(
-            aspectRatio: 1.0,
-            child: GestureDetector(
-              onPanEnd: onSwipe,
-              behavior: HitTestBehavior.opaque,
-              child: GameBoard(tiles: board),
-            ),
-          ),
-        ),
-      ],
-    );
+  Widget _buildPlayerSection(
+    int playerNum,
+    List<int> board,
+    int score,
+    void Function(DragEndDetails) onSwipe,
+    bool rotate,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const horizontalPad = 12.0;
+        const scoreHeight = 28.0;
+        const gap = 6.0;
 
-    if (rotate) {
-      return Transform.rotate(
-        angle: 3.14159, // 180 degrees in radians
-        child: content,
-      );
-    }
-    return content;
+        final maxW = constraints.maxWidth - horizontalPad * 2;
+        final maxH = constraints.maxHeight - scoreHeight - gap;
+        final boardSide = math.min(maxW, maxH).clamp(0.0, double.infinity);
+
+        final scoreStyle = TextStyle(
+          fontSize: boardSide < 180 ? 14 : 16,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textDark,
+        );
+
+        Widget content = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: horizontalPad),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Player $playerNum — Score: $score',
+                style: scoreStyle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: gap),
+              SizedBox(
+                width: boardSide,
+                height: boardSide,
+                child: GestureDetector(
+                  onPanEnd: onSwipe,
+                  behavior: HitTestBehavior.opaque,
+                  child: GameBoard(tiles: board),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        if (rotate) {
+          return Transform.rotate(
+            angle: math.pi,
+            child: content,
+          );
+        }
+        return content;
+      },
+    );
   }
 }

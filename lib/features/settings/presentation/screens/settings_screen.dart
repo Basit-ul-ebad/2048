@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../providers/settings_provider.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../ai/models/ai_difficulty.dart';
+import '../../../../services/feedback/feedback_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -29,9 +31,63 @@ class SettingsScreen extends StatelessWidget {
               secondary: const Icon(Icons.volume_up, color: AppColors.textDark),
               activeThumbColor: AppColors.getTileColor(2048),
               value: settings.isSoundEnabled,
-              onChanged: (value) {
-                settings.toggleSound();
+              onChanged: (_) async {
+                final enabling = !settings.isSoundEnabled;
+                await settings.toggleSound();
+                if (enabling && context.mounted) {
+                  context.read<FeedbackService>().previewSound();
+                }
               },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: SwitchListTile(
+              title: const Text('Share Anonymous Analytics', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Helps improve AI mode balance'),
+              secondary: const Icon(Icons.analytics_outlined, color: AppColors.textDark),
+              activeThumbColor: AppColors.getTileColor(2048),
+              value: settings.analyticsEnabled,
+              onChanged: (_) => settings.toggleAnalytics(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: SwitchListTile(
+              title: const Text('AI Coach hints', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Instant hints on device. Post-game review uses Gemini if configured.'),
+              secondary: const Icon(Icons.psychology, color: AppColors.textDark),
+              activeThumbColor: AppColors.getTileColor(2048),
+              value: settings.aiCoachEnabled,
+              onChanged: (_) => settings.toggleAiCoach(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ListTile(
+              title: const Text('Default AI Difficulty', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(settings.preferredAiDifficulty.label),
+              leading: const Icon(Icons.smart_toy, color: AppColors.textDark),
+              trailing: DropdownButton<AiDifficulty>(
+                value: settings.preferredAiDifficulty,
+                underline: const SizedBox.shrink(),
+                items: AiDifficulty.values
+                    .map(
+                      (d) => DropdownMenuItem(
+                        value: d,
+                        child: Text(d.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    settings.setPreferredAiDifficulty(value);
+                  }
+                },
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -42,8 +98,12 @@ class SettingsScreen extends StatelessWidget {
               secondary: const Icon(Icons.vibration, color: AppColors.textDark),
               activeThumbColor: AppColors.getTileColor(2048),
               value: settings.isVibrationEnabled,
-              onChanged: (value) {
-                settings.toggleVibration();
+              onChanged: (_) async {
+                final enabling = !settings.isVibrationEnabled;
+                await settings.toggleVibration();
+                if (enabling && context.mounted) {
+                  context.read<FeedbackService>().previewVibration();
+                }
               },
             ),
           ),

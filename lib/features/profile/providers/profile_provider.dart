@@ -9,11 +9,15 @@ class ProfileProvider extends ChangeNotifier {
   
   UserModel? _userProfile;
   bool _isLoading = false;
+  bool _isNewUser = false;
 
   ProfileProvider(this._firestoreService);
 
   UserModel? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
+
+  /// True when Auth user exists but no Firestore `users/{uid}` doc yet.
+  bool get isNewUser => _isNewUser;
 
   Future<void> fetchProfile(String uid) async {
     _isLoading = true;
@@ -23,12 +27,15 @@ class ProfileProvider extends ChangeNotifier {
       final doc = await _firestoreService.getUserProfile(uid);
       if (doc.exists) {
         _userProfile = UserModel.fromDocument(doc);
+        _isNewUser = false;
       } else {
-        _userProfile = _fallbackProfile(uid);
+        _userProfile = null;
+        _isNewUser = true;
       }
     } catch (e) {
       debugPrint('Failed to fetch profile: $e');
       _userProfile = _fallbackProfile(uid);
+      _isNewUser = false;
     }
 
     _isLoading = false;
@@ -57,6 +64,8 @@ class ProfileProvider extends ChangeNotifier {
 
   void clearProfile() {
     _userProfile = null;
+    _isNewUser = false;
+    _isLoading = false;
     notifyListeners();
   }
 }

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../services/firebase/auth_service.dart';
+import '../../../services/analytics/analytics_service.dart';
+import '../../../services/analytics/analytics_constants.dart';
 
 class AuthProvider extends ChangeNotifier {
+  AuthProvider(this._authService, this._analytics);
+
   final AuthService _authService;
+  final AnalyticsService _analytics;
 
   bool _isLoading = false;
   String? _error;
-
-  AuthProvider(this._authService);
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -18,6 +21,8 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       await _authService.signInWithEmailAndPassword(email, password);
+      await _analytics.logEmailLoginUsed();
+      await _analytics.logLoginSuccess(loginMethod: AnalyticsLoginMethods.email);
       _setLoading(false);
       return true;
     } catch (e) {
@@ -31,6 +36,8 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       await _authService.signInWithGoogle();
+      await _analytics.logGoogleSignInUsed();
+      await _analytics.logLoginSuccess(loginMethod: AnalyticsLoginMethods.google);
       _setLoading(false);
       return true;
     } catch (e) {
@@ -44,6 +51,7 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       await _authService.registerWithEmailAndPassword(email, password, nickname);
+      await _analytics.logSignupSuccess(loginMethod: AnalyticsLoginMethods.email);
       _setLoading(false);
       return true;
     } catch (e) {
@@ -54,6 +62,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await _analytics.logLogout();
     await _authService.signOut();
     notifyListeners();
   }

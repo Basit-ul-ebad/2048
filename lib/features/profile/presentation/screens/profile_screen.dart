@@ -131,6 +131,14 @@ class ProfileScreen extends StatelessWidget {
                 _buildStatCard('Total Games', '${user.totalGames}', AppColors.getTileColor(32)),
                 _buildStatCard('Wins', '${user.wins}', Colors.green.shade400),
                 _buildStatCard('Losses', '${user.losses}', Colors.red.shade400),
+                if (user.aiGamesPlayed > 0) ...[
+                  _buildStatCard('AI Wins', '${user.aiWins}', AppColors.getTileColor(128)),
+                  _buildStatCard(
+                    'Hardest AI Beaten',
+                    _hardestAiLabel(user.hardestAiBeaten),
+                    AppColors.getTileColor(1024),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 24),
@@ -186,5 +194,18 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+String _hardestAiLabel(int index) {
+  switch (index) {
+    case 2:
+      return 'Hard';
+    case 1:
+      return 'Medium';
+    case 0:
+      return 'Easy';
+    default:
+      return 'None';
   }
 }

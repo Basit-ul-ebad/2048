@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constants/colors.dart';
 import '../../../services/firebase/firestore_service.dart';
+import '../../../services/analytics/analytics_service.dart';
+import '../../../services/analytics/analytics_constants.dart';
 import '../../profile/providers/profile_provider.dart';
 
 class SetNicknameScreen extends StatefulWidget {
@@ -52,6 +54,12 @@ class _SetNicknameScreenState extends State<SetNicknameScreen> {
         uid: user.uid,
         email: user.email ?? 'unknown@email.com',
         nickname: nickname,
+      );
+
+      final analytics = context.read<AnalyticsService>();
+      final isGoogle = user.providerData.any((p) => p.providerId == 'google.com');
+      await analytics.logSignupSuccess(
+        loginMethod: isGoogle ? AnalyticsLoginMethods.google : AnalyticsLoginMethods.email,
       );
 
       // Re-fetch profile to update state and trigger navigation to ModeSelection

@@ -7,6 +7,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../../game/presentation/screens/game_screen.dart';
 import '../../multiplayer/presentation/screens/local_multiplayer_screen.dart';
+import '../../ai/presentation/screens/ai_difficulty_screen.dart';
 import '../../multiplayer/presentation/screens/matchmaking_screen.dart';
 import '../../leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../friends/presentation/screens/friends_screen.dart';
@@ -166,13 +167,23 @@ class ModeSelectionScreen extends StatelessWidget {
                             ),
                             _buildModeCard(
                               context,
+                              title: 'Play vs AI',
+                              icon: Icons.smart_toy,
+                              color: AppColors.getTileColor(512),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const AiDifficultyScreen()),
+                                );
+                              },
+                            ),
+                            _buildModeCard(
+                              context,
                               title: 'Party Room',
                               icon: Icons.meeting_room,
                               color: AppColors.getTileColor(2048),
                               onPressed: () {
-                                if (user != null) {
-                                  _showPartyDialog(context, user.uid);
-                                }
+                                _showPartyDialog(context, user.uid);
                               },
                             ),
                             _buildModeCard(

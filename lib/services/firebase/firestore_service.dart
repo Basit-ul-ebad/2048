@@ -27,6 +27,10 @@ class FirestoreService {
       'wins': 0,
       'losses': 0,
       'friendsCount': 0,
+      'aiWins': 0,
+      'aiLosses': 0,
+      'hardestAiBeaten': -1,
+      'aiGamesPlayed': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
 

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Common Colors
   static const Color background = Color(0xFFFAF8EF);
+
+  /// Default 2048 board background (classic skin).
+  static const Color boardBackground = Color(0xFFBBADA0);
   
   static Color getBoardBackground(String skinId) {
     if (skinId == 'neon') return const Color(0xFF111111);

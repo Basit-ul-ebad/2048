@@ -11,14 +11,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:twozerofoureight/main.dart';
 import 'package:twozerofoureight/services/storage/local_storage_service.dart';
+import 'package:twozerofoureight/services/analytics/analytics_service.dart';
 
 void main() {
   testWidgets('MyApp builds', (WidgetTester tester) async {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
     final localStorage = await LocalStorageService.init();
+    final analyticsService = AnalyticsService(localStorage);
 
-    await tester.pumpWidget(MyApp(localStorage: localStorage));
+    await tester.pumpWidget(MyApp(
+      localStorage: localStorage,
+      analyticsService: analyticsService,
+    ));
 
     expect(find.byType(MaterialApp), findsOneWidget);
   });

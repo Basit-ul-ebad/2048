@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../providers/leaderboard_provider.dart';
+import '../../../auth/providers/auth_provider.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -15,7 +16,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LeaderboardProvider>().fetchLeaderboard();
+      final uid = context.read<AuthProvider>().currentUser?.uid;
+      context.read<LeaderboardProvider>().fetchLeaderboard(currentUserId: uid);
     });
   }
 

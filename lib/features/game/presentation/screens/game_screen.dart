@@ -4,6 +4,10 @@ import '../../../../core/constants/colors.dart';
 import '../../providers/game_provider.dart';
 import '../../../profile/providers/profile_provider.dart';
 import '../../../shop/providers/shop_provider.dart';
+import '../../../coach/presentation/coach_helper.dart';
+import '../../../settings/providers/settings_provider.dart';
+import '../../../../services/ai_coach/coach_session_limits.dart';
+import '../../../../services/analytics/analytics_constants.dart';
 import '../widgets/game_board.dart';
 
 class GameScreen extends StatefulWidget {
@@ -14,66 +18,79 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
+  final CoachSessionLimits _coachLimits = CoachSessionLimits();
+  bool _endDialogShown = false;
+
   @override
   void initState() {
     super.initState();
-    // Initialize game after build
+    _coachLimits.reset();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<GameProvider>().initializeGame();
     });
   }
 
-  void _showGameOverDialog(BuildContext context, GameProvider provider) {
-    if (!provider.isGameOver && !provider.isGameWon) return;
+  void _maybeShowEndDialog(GameProvider provider) {
+    if (!provider.isFinished || _endDialogShown) return;
+    _endDialogShown = true;
+
+    final title = provider.isGameWon
+        ? 'You Win!'
+        : provider.endedManually
+            ? 'Game ended'
+            : 'Game Over';
+
+    final subtitle = provider.endedManually
+        ? 'You chose to stop this run.'
+        : provider.isGameWon
+            ? 'You reached 2048!'
+            : 'No more moves left.';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
+      if (!mounted) return;
+      CoachHelper.showGameEndDialog(
         context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: AppColors.background,
-            title: Text(
-              provider.isGameWon ? 'You Win!' : 'Game Over',
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            content: Text(
-              'Score: ${provider.score}',
-              style: const TextStyle(fontSize: 24, color: AppColors.textDark),
-              textAlign: TextAlign.center,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            actionsAlignment: MainAxisAlignment.center,
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  provider.restartGame();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.getTileColor(64),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Restart',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
-              ),
-            ],
-          );
+        title: title,
+        subtitle: subtitle,
+        score: provider.score,
+        board: List<int>.from(provider.board),
+        mode: AnalyticsModes.singlePlayer,
+        won: provider.isGameWon,
+        limits: _coachLimits,
+        onRestart: () {
+          _endDialogShown = false;
+          _coachLimits.reset();
+          provider.restartGame();
         },
+        onExit: () => Navigator.of(context).pop(),
       );
     });
+  }
+
+  Future<void> _confirmEndGame(GameProvider provider) async {
+    if (!provider.isPlaying) return;
+
+    final quit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.background,
+        title: const Text('End this game?'),
+        content: Text(
+          'Your score (${provider.score}) will be saved. You can get an AI review after.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep playing')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('End game'),
+          ),
+        ],
+      ),
+    );
+
+    if (quit == true && mounted) {
+      provider.endGameManually();
+    }
   }
 
   @override
@@ -83,8 +100,10 @@ class _GameScreenState extends State<GameScreen> {
     final skinId = context.watch<ShopProvider>().selectedSkin;
     final highestScore = profileProvider.userProfile?.highestScore ?? 0;
 
-    if (gameProvider.isGameOver || gameProvider.isGameWon) {
-      _showGameOverDialog(context, gameProvider);
+    if (gameProvider.isFinished) {
+      _maybeShowEndDialog(gameProvider);
+    } else {
+      _endDialogShown = false;
     }
 
     return Scaffold(
@@ -105,11 +124,53 @@ class _GameScreenState extends State<GameScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          CoachAppBarButton(
+            limits: _coachLimits,
+            board: gameProvider.board,
+            score: gameProvider.score,
+            mode: AnalyticsModes.singlePlayer,
+            enabled: gameProvider.isPlaying,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: AppColors.textDark),
+            onSelected: (value) {
+              switch (value) {
+                case 'end':
+                  _confirmEndGame(gameProvider);
+                case 'review':
+                  if (_coachLimits.lastReviewText != null) {
+                    CoachHelper.showStoredReview(context, _coachLimits);
+                  } else {
+                    CoachHelper.showPostGameReview(
+                      context: context,
+                      board: List<int>.from(gameProvider.board),
+                      score: gameProvider.score,
+                      mode: AnalyticsModes.singlePlayer,
+                      won: false,
+                      limits: _coachLimits,
+                    );
+                  }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'end', child: Text('End game')),
+              if (context.read<SettingsProvider>().aiCoachEnabled)
+                PopupMenuItem(
+                  value: 'review',
+                  child: Text(
+                    _coachLimits.lastReviewText != null
+                        ? 'Read last AI review'
+                        : 'AI review (current board)',
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Score Board Container
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Row(
@@ -174,42 +235,57 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ],
                   ),
-                  ElevatedButton(
-                    onPressed: () {
-                      gameProvider.restartGame();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.getTileColor(32),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  Row(
+                    children: [
+                      if (gameProvider.isPlaying)
+                        TextButton(
+                          onPressed: () => _confirmEndGame(gameProvider),
+                          child: const Text(
+                            'End',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ),
+                      ElevatedButton(
+                        onPressed: () {
+                          _endDialogShown = false;
+                          _coachLimits.reset();
+                          gameProvider.restartGame();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.getTileColor(32),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Restart',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Restart',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    ),
+                    ],
                   ),
                 ],
               ),
             ),
-            
-            // Game Board wrapped in GestureDetector for swipe support
             Expanded(
               child: GestureDetector(
                 onPanEnd: (details) {
                   context.read<GameProvider>().handlePanEnd(details);
                 },
-                behavior: HitTestBehavior.opaque, 
+                behavior: HitTestBehavior.opaque,
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: AspectRatio(
-                      aspectRatio: 1.0, 
+                      aspectRatio: 1.0,
                       child: GameBoard(tiles: gameProvider.board),
                     ),
                   ),

@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/firebase/party_service.dart';
 import '../../../services/firebase/firestore_service.dart';
+import '../../../services/analytics/analytics_service.dart';
 
 class PartyProvider extends ChangeNotifier {
   final PartyService _partyService;
   final FirestoreService _firestoreService;
+  final AnalyticsService _analytics;
 
   String? _roomId;
   Map<String, dynamic>? _roomData;
@@ -17,7 +19,7 @@ class PartyProvider extends ChangeNotifier {
   
   StreamSubscription<DocumentSnapshot>? _roomSubscription;
 
-  PartyProvider(this._partyService, this._firestoreService);
+  PartyProvider(this._partyService, this._firestoreService, this._analytics);
 
   String? get roomId => _roomId;
   Map<String, dynamic>? get roomData => _roomData;
@@ -30,6 +32,7 @@ class PartyProvider extends ChangeNotifier {
     _setLoading(true);
     _roomId = await _partyService.createRoom(hostId);
     if (_roomId != null) {
+      await _analytics.logPartyRoomCreated();
       _listenToRoom();
     } else {
       _setError('Failed to create room.');
@@ -41,6 +44,7 @@ class PartyProvider extends ChangeNotifier {
     _setLoading(true);
     _roomId = await _partyService.joinRoomWithCode(guestId, roomCode);
     if (_roomId != null) {
+      await _analytics.logPartyRoomJoined();
       _listenToRoom();
       _setLoading(false);
       return true;
