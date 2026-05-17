@@ -68,4 +68,50 @@ class FirestoreService {
       }
     }
   }
+
+  // XP & Achievements System
+  Future<void> addMatchResults(String uid, int finalScore) async {
+    try {
+      final doc = await users.doc(uid).get();
+      if (!doc.exists) return;
+
+      final data = doc.data() as Map<String, dynamic>;
+      
+      int currentExp = data['exp'] ?? 0;
+      int currentLevel = data['currentLevel'] ?? 1;
+      int currentCoins = data['coins'] ?? 0;
+      int totalGames = data['totalGames'] ?? 0;
+
+      // Calculate new values
+      int gainedExp = (finalScore / 100).floor();
+      // Bonus exp just for playing
+      gainedExp += 10;
+      
+      int newExp = currentExp + gainedExp;
+      
+      // Level up logic (1000 exp per level)
+      int newLevel = (newExp / 1000).floor() + 1;
+      
+      // Calculate rank
+      String newRank = 'Bronze';
+      if (newLevel >= 50) newRank = 'Diamond';
+      else if (newLevel >= 30) newRank = 'Gold';
+      else if (newLevel >= 10) newRank = 'Silver';
+
+      // Coins reward
+      int gainedCoins = (finalScore / 200).floor();
+      gainedCoins += 5; // Base reward
+      
+      await users.doc(uid).update({
+        'exp': newExp,
+        'currentLevel': newLevel,
+        'rank': newRank,
+        'coins': currentCoins + gainedCoins,
+        'totalGames': totalGames + 1,
+      });
+
+    } catch (e) {
+      print('Error updating match results: $e');
+    }
+  }
 }

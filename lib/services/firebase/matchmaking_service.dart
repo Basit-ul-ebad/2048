@@ -16,21 +16,20 @@ class MatchmakingService {
       
       if (snapshot.exists) {
         final data = snapshot.value as Map<dynamic, dynamic>;
-        final queueId = data.keys.first;
-        final opponentId = data[queueId]['userId'];
+        final opponentUserId = data.keys.first;
 
-        if (opponentId == userId) {
+        if (opponentUserId == userId) {
           // Already in queue
           return null; 
         }
 
         // 2. Remove opponent from queue
-        await matchmakingQueue.child(queueId).remove();
+        await matchmakingQueue.child(opponentUserId).remove();
 
         // 3. Create a Match
         final matchId = _uuid.v4();
         await onlineMatches.child(matchId).set({
-          'player1Id': opponentId,
+          'player1Id': opponentUserId,
           'player2Id': userId,
           'player1Score': 0,
           'player2Score': 0,
@@ -42,9 +41,8 @@ class MatchmakingService {
 
         return matchId;
       } else {
-        // 4. Nobody in queue, join queue
-        final queueId = _uuid.v4();
-        await matchmakingQueue.child(queueId).set({
+        // 4. Nobody in queue, join queue using userId as the key
+        await matchmakingQueue.child(userId).set({
           'userId': userId,
           'joinedAt': ServerValue.timestamp,
         });
@@ -62,12 +60,10 @@ class MatchmakingService {
   }
 
   Future<void> leaveQueue(String userId) async {
-    final snapshot = await matchmakingQueue.orderByChild('userId').equalTo(userId).get();
-    if (snapshot.exists) {
-      final data = snapshot.value as Map<dynamic, dynamic>;
-      for (var key in data.keys) {
-        await matchmakingQueue.child(key).remove();
-      }
+    try {
+      await matchmakingQueue.child(userId).remove();
+    } catch (e) {
+      print('Failed to leave queue: $e');
     }
   }
 }

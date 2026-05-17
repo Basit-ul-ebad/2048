@@ -22,4 +22,19 @@ class LocalStorageService {
   Future<void> setVibrationEnabled(bool value) async {
     await _prefs.setBool(_keyVibrationEnabled, value);
   }
+
+  String? get savedBoard => _prefs.getString('saved_board');
+  Future<void> setSavedBoard(String boardJson) async {
+    await _prefs.setString('saved_board', boardJson);
+  }
+
+  int get savedScore => _prefs.getInt('saved_score') ?? 0;
+  Future<void> setSavedScore(int score) async {
+    await _prefs.setInt('saved_score', score);
+  }
+
+  Future<void> clearSavedGame() async {
+    await _prefs.remove('saved_board');
+    await _prefs.remove('saved_score');
+  }
 }

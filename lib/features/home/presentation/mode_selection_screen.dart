@@ -13,6 +13,7 @@ import '../../shop/presentation/screens/shop_screen.dart';
 import '../../settings/presentation/screens/settings_screen.dart';
 import '../../profile/presentation/screens/profile_screen.dart';
 import '../../multiplayer/presentation/screens/party_lobby_screen.dart';
+import '../../multiplayer/providers/party_provider.dart';
 import '../../notifications/presentation/screens/notification_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
 
@@ -168,7 +169,9 @@ class ModeSelectionScreen extends StatelessWidget {
                               icon: Icons.meeting_room,
                               color: AppColors.getTileColor(2048),
                               onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => const PartyLobbyScreen()));
+                                if (user != null) {
+                                  _showPartyDialog(context, user.uid);
+                                }
                               },
                             ),
                             _buildModeCard(
@@ -250,6 +253,73 @@ class ModeSelectionScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPartyDialog(BuildContext context, String uid) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final codeController = TextEditingController();
+        return AlertDialog(
+          backgroundColor: AppColors.background,
+          title: const Text('Party Room', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.getTileColor(2048),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                onPressed: () async {
+                  Navigator.pop(dialogContext); // Close dialog
+                  await context.read<PartyProvider>().createRoom(uid);
+                  if (context.mounted) {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PartyLobbyScreen()));
+                  }
+                },
+                child: const Text('Create Party', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.0),
+                child: Text('OR', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              ),
+              TextField(
+                controller: codeController,
+                decoration: InputDecoration(
+                  hintText: 'Enter Room Code',
+                  filled: true,
+                  fillColor: AppColors.getTileColor(2),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.getTileColor(1024),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                onPressed: () async {
+                  final code = codeController.text.trim().toUpperCase();
+                  if (code.isNotEmpty) {
+                    Navigator.pop(dialogContext); // Close dialog
+                    final success = await context.read<PartyProvider>().joinRoom(uid, code);
+                    if (success && context.mounted) {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const PartyLobbyScreen()));
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid Room Code or Room Full')));
+                    }
+                  }
+                },
+                child: const Text('Join Party', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

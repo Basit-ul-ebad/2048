@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'firestore_service.dart';
 
 class AuthService {
@@ -45,10 +46,8 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseError(e);
     } catch (e) {
-      if (e is Exception) {
-        throw e.toString().replaceAll('Exception: ', '');
-      }
-      throw 'An unexpected error occurred. Please try again.';
+      if (e is String) throw e;
+      throw e.toString().replaceAll('Exception: ', '');
     }
   }
 
@@ -65,7 +64,32 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseError(e);
     } catch (e) {
-      throw 'An unexpected error occurred. Please try again.';
+      if (e is String) throw e;
+      throw e.toString().replaceAll('Exception: ', '');
+    }
+  }
+
+  // Sign in with Google
+  Future<UserCredential> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        throw 'Google sign-in was aborted.';
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      throw _handleFirebaseError(e);
+    } catch (e) {
+      if (e is String) throw e;
+      throw 'An unexpected error occurred during Google Sign-In.';
     }
   }
 

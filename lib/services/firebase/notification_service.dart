@@ -40,4 +40,16 @@ class NotificationService {
       print('Failed to send notification: $e');
     }
   }
+  Future<void> sendChallengeNotification({
+    required String targetUid,
+    required String senderNickname,
+    required String roomCode,
+  }) async {
+    await sendNotification(
+      receiverId: targetUid,
+      type: 'match_invite',
+      title: 'Match Challenge!',
+      message: '$senderNickname has challenged you to a Party Match! Room Code: $roomCode',
+    );
+  }
 }

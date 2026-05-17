@@ -3,6 +3,10 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/friends_provider.dart';
+import '../../../multiplayer/providers/party_provider.dart';
+import '../../../multiplayer/presentation/screens/party_lobby_screen.dart';
+import '../../../notifications/providers/notification_provider.dart';
+import '../../../profile/providers/profile_provider.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -151,9 +155,31 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                   subtitle: Text('Level ${friend['currentLevel'] ?? 1} • Rank: ${friend['rank'] ?? 'Bronze'}'),
                                   trailing: IconButton(
                                     icon: const Icon(Icons.videogame_asset, color: AppColors.textDark),
-                                    onPressed: () {
-                                      // Challenge friend logic (future feature)
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Challenge feature coming soon!')));
+                                    onPressed: () async {
+                                      final currentUserUid = context.read<AuthProvider>().currentUser?.uid;
+                                      final currentProfile = context.read<ProfileProvider>().userProfile;
+                                      if (currentUserUid != null && currentProfile != null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Creating challenge...')));
+                                        
+                                        // 1. Create Room
+                                        final partyProvider = context.read<PartyProvider>();
+                                        await partyProvider.createRoom(currentUserUid);
+                                        
+                                        // 2. Send Notification
+                                        final roomCode = partyProvider.roomData?['roomCode'];
+                                        if (roomCode != null && context.mounted) {
+                                          await context.read<NotificationProvider>().sendChallenge(
+                                            friend['uid'],
+                                            currentProfile.nickname,
+                                            roomCode,
+                                          );
+                                          
+                                          // 3. Navigate to Lobby
+                                          if (context.mounted) {
+                                            Navigator.push(context, MaterialPageRoute(builder: (context) => const PartyLobbyScreen()));
+                                          }
+                                        }
+                                      }
                                     },
                                   ),
                                 ),

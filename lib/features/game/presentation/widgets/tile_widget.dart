@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/game_constants.dart';
+import '../../../shop/providers/shop_provider.dart';
 
 class TileWidget extends StatelessWidget {
   final int value;
@@ -12,10 +14,12 @@ class TileWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skinId = context.watch<ShopProvider>().selectedSkin;
+
     if (value == 0) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.getTileColor(0),
+          color: AppColors.getTileColor(0, skinId: skinId),
           borderRadius: BorderRadius.circular(8),
         ),
       );
@@ -31,7 +35,7 @@ class TileWidget extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: GameConstants.tileMoveDuration),
             decoration: BoxDecoration(
-              color: AppColors.getTileColor(value),
+              color: AppColors.getTileColor(value, skinId: skinId),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -40,7 +44,7 @@ class TileWidget extends StatelessWidget {
                 style: TextStyle(
                   fontSize: value > 512 ? 24 : 32,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.getTileTextColor(value),
+                  color: AppColors.getTileTextColor(value, skinId: skinId),
                 ),
               ),
             ),

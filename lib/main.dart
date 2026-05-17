@@ -29,6 +29,7 @@ import 'core/theme/app_theme.dart';
 
 // Screens
 import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/presentation/set_nickname_screen.dart';
 import 'features/home/presentation/mode_selection_screen.dart';
 
 void main() async {
@@ -66,7 +67,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsProvider(localStorage)),
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
         ChangeNotifierProvider(create: (_) => ProfileProvider(firestoreService)),
-        ChangeNotifierProvider(create: (_) => GameProvider()),
+        ChangeNotifierProvider(create: (_) => GameProvider(localStorage, firestoreService)),
         ChangeNotifierProvider(create: (_) => MultiplayerProvider(matchmakingService, realtimeService)),
         ChangeNotifierProvider(create: (_) => PartyProvider(partyService, firestoreService)),
         ChangeNotifierProvider(create: (_) => ShopProvider(firestoreService)),
@@ -95,20 +96,34 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: context.read<AuthProvider>().currentUser != null
-          ? Stream.value(context.read<AuthProvider>().currentUser)
-          : FirebaseAuth.instance.authStateChanges(),
+      stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         
         if (snapshot.hasData) {
-          // Fetch profile data when user logs in
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<ProfileProvider>().fetchProfile(snapshot.data!.uid);
-          });
-          return const ModeSelectionScreen();
+          return Consumer<ProfileProvider>(
+            builder: (context, profileProvider, child) {
+              if (profileProvider.isLoading) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+
+              if (profileProvider.userProfile == null && !profileProvider.isNewUser) {
+                // Initial fetch trigger
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  profileProvider.fetchProfile(snapshot.data!.uid);
+                });
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+
+              if (profileProvider.isNewUser) {
+                return const SetNicknameScreen();
+              }
+
+              return const ModeSelectionScreen();
+            },
+          );
         }
         
         // Clean up when logged out

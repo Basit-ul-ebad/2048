@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
 import '../../providers/game_provider.dart';
+import '../../../profile/providers/profile_provider.dart';
+import '../../../shop/providers/shop_provider.dart';
 import '../widgets/game_board.dart';
 
 class GameScreen extends StatefulWidget {
@@ -53,7 +55,7 @@ class _GameScreenState extends State<GameScreen> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  provider.initializeGame();
+                  provider.restartGame();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.getTileColor(64),
@@ -77,6 +79,9 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final gameProvider = context.watch<GameProvider>();
+    final profileProvider = context.watch<ProfileProvider>();
+    final skinId = context.watch<ShopProvider>().selectedSkin;
+    final highestScore = profileProvider.userProfile?.highestScore ?? 0;
 
     if (gameProvider.isGameOver || gameProvider.isGameWon) {
       _showGameOverDialog(context, gameProvider);
@@ -110,36 +115,68 @@ class _GameScreenState extends State<GameScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.boardBackground,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'SCORE',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textLight,
-                          ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.getBoardBackground(skinId),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        Text(
-                          '${gameProvider.score}',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'SCORE',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textLight,
+                              ),
+                            ),
+                            Text(
+                              '${gameProvider.score}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.getBoardBackground(skinId),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'BEST',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textLight,
+                              ),
+                            ),
+                            Text(
+                              '$highestScore',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      gameProvider.initializeGame();
+                      gameProvider.restartGame();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.getTileColor(32),

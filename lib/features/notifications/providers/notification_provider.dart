@@ -18,6 +18,14 @@ class NotificationProvider extends ChangeNotifier {
   int get unreadCount => _unreadCount;
   bool get isListening => _isListening;
 
+  Future<void> sendChallenge(String targetUid, String senderNickname, String roomCode) async {
+    await _notificationService.sendChallengeNotification(
+      targetUid: targetUid,
+      senderNickname: senderNickname,
+      roomCode: roomCode,
+    );
+  }
+
   void listenToNotifications(String userId) {
     if (_isListening && _currentUserId == userId) return;
     _isListening = true;

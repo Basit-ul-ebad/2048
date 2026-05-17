@@ -18,7 +18,7 @@ class _OnlineMultiplayerScreenState extends State<OnlineMultiplayerScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GameProvider>().initializeGame();
+      context.read<GameProvider>().initializeGame(isMultiplayer: true);
       context.read<GameProvider>().addListener(_onLocalBoardChanged);
     });
   }
