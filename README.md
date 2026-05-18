@@ -137,16 +137,17 @@ build/app/outputs/flutter-apk/app-release.apk
 * **Basit-ul-Ebad** — Lead Developer & Architect
 * **Faiza Munir** — Lead Developer & Architect
 
-* ## 📞 Contact
+## 📞 Contact
 For queries, feedback, or collaboration:
 
-* **Basit**
-Email: basitulebad@gmail.com
-GitHub: https://github.com/Basit-ul-ebad
-LinkedIn: https://www.linkedin.com/in/basit-ul-ebad-qureshi-10a62a293/
+### Basit Ul Ebad
 
-* **Faiza**
-email: faizamunir501@gmail.com
-GitHub: https://github.com/Faizamunir720
-LinkedIn: https://www.linkedin.com/in/faizamunir99/
+[![GitHub](https://img.shields.io/badge/GitHub-basit--ebad-black?style=flat&logo=github)](https://github.com/basit-ebad)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Basit_Ul_Ebad-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/basit-ul-ebad-qureshi-10a62a293/)
+[![Email](https://img.shields.io/badge/Email-basit.ul.ibad@gmail.com-red?style=flat&logo=gmail)](mailto:basit.ul.ibad@gmail.com)
 
+### Faiza Munir
+
+[![GitHub](https://img.shields.io/badge/GitHub-Faiza-Munir-black?style=flat&logo=github)](https://github.com/Faizamunir720)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Faiza-Munir-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/faizamunir99/)
+[![Email](https://img.shields.io/badge/Email-faizamunir501@gmail.com-red?style=flat&logo=gmail)](mailto:faizamunir501@gmail.com)
