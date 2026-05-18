@@ -136,3 +136,17 @@ build/app/outputs/flutter-apk/app-release.apk
 ## 👩‍💻 Authors
 * **Basit-ul-Ebad** — Lead Developer & Architect
 * **Faiza Munir** — Lead Developer & Architect
+
+* ## 📞 Contact
+For queries, feedback, or collaboration:
+
+* **Basit**
+Email: basitulebad@gmail.com
+GitHub: https://github.com/Basit-ul-ebad
+LinkedIn: https://www.linkedin.com/in/basit-ul-ebad-qureshi-10a62a293/
+
+* **Faiza**
+email: faizamunir501@gmail.com
+GitHub: https://github.com/Faizamunir720
+LinkedIn: https://www.linkedin.com/in/faizamunir99/
+
