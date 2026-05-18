@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "matchmaking_queue": {
+      ".read": "auth != null",
+      "$queueId": {
+        ".write": "auth != null && (newData.child('userId').val() === auth.uid || data.child('userId').val() === auth.uid || !data.exists())"
+      }
+    },
+    "online_matches": {
+      ".read": "auth != null",
+      ".indexOn": ["player1Id", "player2Id", "gameState"],
+      "$matchId": {
+        ".read": "auth != null && (data.child('player1Id').val() === auth.uid || data.child('player2Id').val() === auth.uid || newData.child('player1Id').val() === auth.uid || newData.child('player2Id').val() === auth.uid)",
+        ".write": "auth != null && (data.val() === null || data.child('player1Id').val() === auth.uid || data.child('player2Id').val() === auth.uid || newData.child('player1Id').val() === auth.uid || newData.child('player2Id').val() === auth.uid)"
+      }
+    }
+  }
+}

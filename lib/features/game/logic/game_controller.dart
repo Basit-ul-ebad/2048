@@ -1,4 +1,5 @@
 import '../models/board_model.dart';
+import '../../../services/feedback/feedback_service.dart';
 import 'game_engine.dart';
 
 class GameController {
@@ -7,6 +8,7 @@ class GameController {
   final Function(BoardModel) onStateUpdate;
   final Function() onWin;
   final Function() onGameOver;
+  final FeedbackService? feedback;
   
   BoardModel _board = BoardModel.empty();
   bool _hasWonAlready = false;
@@ -15,6 +17,7 @@ class GameController {
     required this.onStateUpdate,
     required this.onWin,
     required this.onGameOver,
+    this.feedback,
   });
 
   BoardModel get board => _board;
@@ -48,7 +51,10 @@ class GameController {
     
     if (moved) {
       List<int> newTiles = result['board'];
-      int newScore = _board.score + (result['scoreGained'] as int);
+      final scoreGained = result['scoreGained'] as int;
+      int newScore = _board.score + scoreGained;
+
+      feedback?.onMove(scoreGained: scoreGained);
       
       newTiles = _engine.addRandomTile(newTiles);
       
@@ -66,6 +72,7 @@ class GameController {
 
       if (isWin && !_hasWonAlready) {
         _hasWonAlready = true;
+        feedback?.onWin();
         onWin();
       } else if (isOver) {
         onGameOver();

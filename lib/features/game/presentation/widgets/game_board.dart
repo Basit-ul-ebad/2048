@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../shop/providers/shop_provider.dart';
 import 'tile_widget.dart';
 
 class GameBoard extends StatelessWidget {
@@ -12,9 +14,11 @@ class GameBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skinId = context.watch<ShopProvider>().selectedSkin;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.boardBackground,
+        color: AppColors.getBoardBackground(skinId),
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.all(8.0),
