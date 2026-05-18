@@ -148,6 +148,6 @@ For queries, feedback, or collaboration:
 
 ### Faiza Munir
 
-[![GitHub](https://img.shields.io/badge/GitHub-Faiza-Munir-black?style=flat&logo=github)](https://github.com/Faizamunir720)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Faiza-Munir-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/faizamunir99/)
+[![GitHub](https://img.shields.io/badge/GitHub-Faiza--Munir-black?style=flat&logo=github)](https://github.com/Faizamunir720)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Faiza_Munir-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/faizamunir99/)
 [![Email](https://img.shields.io/badge/Email-faizamunir501@gmail.com-red?style=flat&logo=gmail)](mailto:faizamunir501@gmail.com)
