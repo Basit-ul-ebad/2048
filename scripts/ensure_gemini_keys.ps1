@@ -3,14 +3,14 @@ $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
 $keyFile = Join-Path "keys" "dart_defines.json"
-$exampleFile = Join-Path "keys" "dart_defines.example.json"
+$exampleFile = Join-Path "keys" "dart_defines.json.example"
 
 if (-not (Test-Path $keyFile)) {
   if (Test-Path $exampleFile) {
     Copy-Item $exampleFile $keyFile
-    Write-Host "Created keys/dart_defines.json — paste your GEMINI_API_KEY from aistudio.google.com/apikey"
+    Write-Host "Created keys/dart_defines.json - paste your GEMINI_API_KEY from aistudio.google.com/apikey"
   } else {
-    Write-Error "ERROR: keys/dart_defines.example.json not found."
+    Write-Error "ERROR: keys/dart_defines.json.example not found."
     exit 1
   }
 }
