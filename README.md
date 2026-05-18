@@ -135,3 +135,4 @@ build/app/outputs/flutter-apk/app-release.apk
 
 ## 👩‍💻 Authors
 * **Basit-ul-Ebad** — Lead Developer & Architect
+* **Faiza Munir** — Lead Developer & Architect
